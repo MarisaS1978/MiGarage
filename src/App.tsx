@@ -8,6 +8,7 @@ import { ToastContainer } from './components/common/ToastContainer';
 import { VehicleDetailModal } from './components/family/VehicleDetailModal';
 import { VehicleFormModal } from './components/common/VehicleFormModal';
 import { QuickLogModal } from './components/common/QuickLogModal';
+import { NotificationCenterModal } from './components/notifications/NotificationCenterModal';
 
 // Family Views
 import { FamilyDashboard } from './components/family/FamilyDashboard';
@@ -41,6 +42,7 @@ const MainAppContent: React.FC = () => {
   } = useGarage();
 
   const [showVehicleModal, setShowVehicleModal] = useState(false);
+  const [showNotificationCenter, setShowNotificationCenter] = useState(false);
   const [quickActionType, setQuickActionType] = useState<
     'mantenimiento' | 'combustible' | 'recordatorio' | 'siniestro' | 'vehiculo' | null
   >(null);
@@ -69,6 +71,7 @@ const MainAppContent: React.FC = () => {
               onOpenVehicleModal={() => setShowVehicleModal(true)}
               onOpenQuickAction={handleOpenQuickAction}
               onSelectVehicle={(id) => setSelectedVehicleId(id)}
+              onOpenNotifications={() => setShowNotificationCenter(true)}
             />
           );
         case 'vehiculos':
@@ -113,7 +116,11 @@ const MainAppContent: React.FC = () => {
       // Enterprise Mode
       switch (currentTab) {
         case 'inicio':
-          return <EnterpriseDashboard />;
+          return (
+            <EnterpriseDashboard
+              onOpenNotifications={() => setShowNotificationCenter(true)}
+            />
+          );
         case 'flota':
           return (
             <FleetView
@@ -155,7 +162,10 @@ const MainAppContent: React.FC = () => {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 flex flex-col">
       {/* Top Header */}
-      <Header onOpenQuickAction={() => handleOpenQuickAction('mantenimiento')} />
+      <Header
+        onOpenQuickAction={() => handleOpenQuickAction('mantenimiento')}
+        onOpenNotifications={() => setShowNotificationCenter(true)}
+      />
 
       {/* Main Layout Container */}
       <div className="flex-1 flex max-w-7xl w-full mx-auto">
@@ -173,6 +183,11 @@ const MainAppContent: React.FC = () => {
 
       {/* Global Toast Notifications */}
       <ToastContainer />
+
+      {/* Notification Center Modal */}
+      {showNotificationCenter && (
+        <NotificationCenterModal onClose={() => setShowNotificationCenter(false)} />
+      )}
 
       {/* Vehicle Ficha Detail Modal */}
       {selectedVehicleId && (

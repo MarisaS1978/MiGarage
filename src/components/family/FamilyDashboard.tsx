@@ -19,14 +19,16 @@ interface FamilyDashboardProps {
   onOpenVehicleModal: () => void;
   onOpenQuickAction: (actionType?: 'mantenimiento' | 'combustible' | 'recordatorio' | 'siniestro' | 'vehiculo') => void;
   onSelectVehicle: (id: string) => void;
+  onOpenNotifications?: () => void;
 }
 
 export const FamilyDashboard: React.FC<FamilyDashboardProps> = ({
   onOpenVehicleModal,
   onOpenQuickAction,
   onSelectVehicle,
+  onOpenNotifications,
 }) => {
-  const { vehicles, reminders, insurance, setCurrentTab } = useGarage();
+  const { vehicles, reminders, insurance, setCurrentTab, unreadAlertsCount } = useGarage();
 
   // Filter family vehicles
   const familyVehicles = vehicles.filter((v) => v.mode === 'family' || v.mode === 'both');
@@ -203,14 +205,42 @@ export const FamilyDashboard: React.FC<FamilyDashboardProps> = ({
               Próximos vencimientos
             </h2>
           </div>
-          <button
-            onClick={() => setCurrentTab('recordatorios')}
-            className="text-xs sm:text-sm font-semibold text-teal-700 hover:text-teal-800 flex items-center gap-1 cursor-pointer"
-          >
-            <span>Ver recordatorios</span>
-            <ChevronRight className="w-4 h-4" />
-          </button>
+          <div className="flex items-center gap-2">
+            {onOpenNotifications && unreadAlertsCount > 0 && (
+              <button
+                onClick={onOpenNotifications}
+                className="text-xs font-bold px-2.5 py-1 rounded-full bg-rose-50 border border-rose-200 text-rose-800 hover:bg-rose-100 flex items-center gap-1.5 transition cursor-pointer"
+              >
+                <Bell className="w-3.5 h-3.5 text-rose-600" />
+                <span>{unreadAlertsCount} Alertas</span>
+              </button>
+            )}
+            <button
+              onClick={() => setCurrentTab('recordatorios')}
+              className="text-xs sm:text-sm font-semibold text-teal-700 hover:text-teal-800 flex items-center gap-1 cursor-pointer"
+            >
+              <span>Ver recordatorios</span>
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
         </div>
+
+        {unreadAlertsCount > 0 && onOpenNotifications && (
+          <div className="mb-4 p-3.5 sm:p-4 rounded-2xl bg-amber-50/90 border border-amber-200 text-amber-950 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs shadow-xs">
+            <div className="flex items-center gap-2.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse shrink-0" />
+              <span>
+                Tenés <strong>{unreadAlertsCount} vencimientos próximos</strong> (Seguro en 32 días, VTV en 12 días, Service en 800 km).
+              </span>
+            </div>
+            <button
+              onClick={onOpenNotifications}
+              className="self-end sm:self-auto px-3 py-1.5 rounded-xl bg-amber-800 hover:bg-amber-900 text-white font-bold transition cursor-pointer"
+            >
+              Abrir Alertas & Push
+            </button>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {/* Card 1: Seguro */}

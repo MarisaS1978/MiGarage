@@ -16,8 +16,14 @@ import {
   ShieldAlert,
 } from 'lucide-react';
 
-export const EnterpriseDashboard: React.FC = () => {
-  const { vehicles, drivers, maintenance, fuelLogs, expenses, incidents, reminders, setCurrentTab } = useGarage();
+interface EnterpriseDashboardProps {
+  onOpenNotifications?: () => void;
+}
+
+export const EnterpriseDashboard: React.FC<EnterpriseDashboardProps> = ({
+  onOpenNotifications,
+}) => {
+  const { vehicles, drivers, maintenance, fuelLogs, expenses, incidents, reminders, setCurrentTab, unreadAlertsCount } = useGarage();
 
   const enterpriseVehicles = vehicles.filter((v) => v.mode === 'enterprise' || v.mode === 'both');
 
@@ -181,7 +187,7 @@ export const EnterpriseDashboard: React.FC = () => {
 
         {/* Próximos vencimientos */}
         <div
-          onClick={() => setCurrentTab('documentos')}
+          onClick={() => (onOpenNotifications ? onOpenNotifications() : setCurrentTab('documentos'))}
           className="bg-white p-4 rounded-2xl border border-amber-200/90 shadow-xs cursor-pointer hover:border-amber-400 transition"
         >
           <div className="flex items-center justify-between text-xs text-amber-800 font-semibold mb-1">
@@ -189,7 +195,12 @@ export const EnterpriseDashboard: React.FC = () => {
               <Clock className="w-4 h-4 text-amber-600" />
               <span>Vencimientos</span>
             </div>
-            <ChevronRight className="w-3.5 h-3.5" />
+            <div className="flex items-center gap-1">
+              {unreadAlertsCount > 0 && (
+                <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
+              )}
+              <ChevronRight className="w-3.5 h-3.5" />
+            </div>
           </div>
           <div className="text-xl sm:text-2xl font-black text-amber-900 font-mono">
             {upcomingExpirations}

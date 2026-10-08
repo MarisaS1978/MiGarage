@@ -242,3 +242,34 @@ export interface IncidentShareConfig {
   expirationHours: 1 | 24 | 168; // 1 hr, 24 hrs, 7 days
   pinCode?: string;
 }
+
+export type ExpirationAlertType = 'seguro' | 'vtv' | 'mantenimiento' | 'licencia';
+export type AlertUrgency = 'critico' | 'urgente' | 'aviso' | 'optimo';
+
+export interface ExpirationAlert {
+  id: string;
+  type: ExpirationAlertType;
+  title: string;
+  vehicleName: string;
+  vehicleId: string;
+  dueDate?: string;
+  daysRemaining?: number;
+  kmRemaining?: number;
+  urgency: AlertUrgency;
+  detail: string;
+  read: boolean;
+  createdAt: string;
+  actionTab?: string;
+}
+
+export interface NotificationSettings {
+  webPushEnabled: boolean;
+  soundEnabled: boolean;
+  notifyInsurance: boolean;
+  notifyVtv: boolean;
+  notifyMaintenance: boolean;
+  notifyDriverLicenses: boolean;
+  alertDaysAdvance: number; // 30, 15, 7
+  permissionStatus: 'default' | 'granted' | 'denied' | 'unsupported';
+}
+

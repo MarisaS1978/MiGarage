@@ -8,14 +8,16 @@ import {
   RefreshCw,
   Sparkles,
   ChevronDown,
+  Bell,
 } from 'lucide-react';
 
 interface HeaderProps {
   onOpenQuickAction: () => void;
+  onOpenNotifications: () => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({ onOpenQuickAction }) => {
-  const { mode, setMode, setShowModeSelector, resetToDemoData } = useGarage();
+export const Header: React.FC<HeaderProps> = ({ onOpenQuickAction, onOpenNotifications }) => {
+  const { mode, setMode, setShowModeSelector, resetToDemoData, unreadAlertsCount } = useGarage();
   const [showModeDropdown, setShowModeDropdown] = useState(false);
 
   return (
@@ -141,6 +143,21 @@ export const Header: React.FC<HeaderProps> = ({ onOpenQuickAction }) => {
               </>
             )}
           </div>
+
+          {/* Notifications Bell Button */}
+          <button
+            onClick={onOpenNotifications}
+            className="relative p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-200 hover:text-white transition cursor-pointer border border-slate-700/60"
+            title="Centro de Notificaciones & Vencimientos"
+            aria-label="Notificaciones"
+          >
+            <Bell className="w-4 h-4" />
+            {unreadAlertsCount > 0 && (
+              <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-rose-500 text-white text-[10px] font-black flex items-center justify-center font-mono animate-pulse shadow-xs">
+                {unreadAlertsCount}
+              </span>
+            )}
+          </button>
 
           {/* Quick Action Button */}
           <button

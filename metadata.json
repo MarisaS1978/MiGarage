@@ -2,5 +2,7 @@
   "name": "MiGarage",
   "description": "Todo tu garage en un solo lugar. Gestión integral de vehículos, mantenimiento, documentación, seguros, gastos y siniestros para familias y flotas.",
   "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }

@@ -21,10 +21,13 @@ import {
 } from 'lucide-react';
 
 export const MobileNav: React.FC = () => {
-  const { mode, currentTab, setCurrentTab, reminders, incidents, setMode } = useGarage();
+  const { mode, currentTab, setCurrentTab, reminders, incidents, setMode, unreadAlertsCount } = useGarage();
   const [showMoreDrawer, setShowMoreDrawer] = useState(false);
 
-  const activeRemindersCount = reminders.filter((r) => !r.completed).length;
+  const activeRemindersCount = Math.max(
+    reminders.filter((r) => !r.completed).length,
+    unreadAlertsCount
+  );
   const activeIncidentsCount = incidents.filter(
     (i) => i.status !== 'resuelto' && i.status !== 'rechazado'
   ).length;

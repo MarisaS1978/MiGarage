@@ -12,6 +12,8 @@ import {
   FuelLog,
   Incident,
   VehicleStatus,
+  ExpirationAlert,
+  NotificationSettings,
 } from '../types';
 import {
   INITIAL_VEHICLES,
@@ -25,6 +27,13 @@ import {
   INITIAL_FUEL_LOGS,
   INITIAL_INCIDENTS,
 } from '../data/mockData';
+import {
+  computeExpirationAlerts,
+  getBrowserNotificationStatus,
+  requestWebNotificationPermission,
+  sendBrowserNotification,
+  playNotificationChime,
+} from '../services/notificationService';
 
 interface ToastNotification {
   id: string;
@@ -91,6 +100,17 @@ interface GarageContextType {
   addDriver: (driver: Omit<Driver, 'id'>) => void;
   updateDriver: (id: string, updates: Partial<Driver>) => void;
   deleteDriver: (id: string) => void;
+
+  // Notifications & Expiration Alerts
+  alerts: ExpirationAlert[];
+  unreadAlertsCount: number;
+  notificationSettings: NotificationSettings;
+  updateNotificationSettings: (settings: Partial<NotificationSettings>) => void;
+  markAlertAsRead: (alertId: string) => void;
+  markAllAlertsAsRead: () => void;
+  requestNotificationPermission: () => Promise<boolean>;
+  sendTestNotification: () => void;
+  checkUpcomingExpirationsNow: (notifyUser?: boolean) => void;
 
   // Utilities
   resetToDemoData: () => void;
@@ -165,6 +185,131 @@ export const GarageProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const saved = localStorage.getItem('migarage_incidents');
     return saved ? JSON.parse(saved) : INITIAL_INCIDENTS;
   });
+
+  // Notification Settings
+  const [notificationSettings, setNotificationSettings] = useState<NotificationSettings>(() => {
+    const saved = localStorage.getItem('migarage_notification_settings');
+    const initialPerm = getBrowserNotificationStatus();
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        return { ...parsed, permissionStatus: initialPerm };
+      } catch {
+        // Fallback below
+      }
+    }
+    return {
+      webPushEnabled: true,
+      soundEnabled: true,
+      notifyInsurance: true,
+      notifyVtv: true,
+      notifyMaintenance: true,
+      notifyDriverLicenses: true,
+      alertDaysAdvance: 30,
+      permissionStatus: initialPerm,
+    };
+  });
+
+  // Read alert IDs
+  const [readAlertIds, setReadAlertIds] = useState<string[]>(() => {
+    const saved = localStorage.getItem('migarage_read_alerts');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  // Compute alerts dynamically from vehicles, insurance, docs, reminders & drivers
+  const alerts: ExpirationAlert[] = React.useMemo(() => {
+    const allAlerts = computeExpirationAlerts(vehicles, insurance, documents, reminders, drivers);
+    return allAlerts.map((a) => ({
+      ...a,
+      read: readAlertIds.includes(a.id),
+    }));
+  }, [vehicles, insurance, documents, reminders, drivers, readAlertIds]);
+
+  const unreadAlertsCount = alerts.filter((a) => !a.read && a.urgency !== 'optimo').length;
+
+  useEffect(() => {
+    localStorage.setItem('migarage_notification_settings', JSON.stringify(notificationSettings));
+  }, [notificationSettings]);
+
+  useEffect(() => {
+    localStorage.setItem('migarage_read_alerts', JSON.stringify(readAlertIds));
+  }, [readAlertIds]);
+
+  const updateNotificationSettings = (updates: Partial<NotificationSettings>) => {
+    setNotificationSettings((prev) => ({ ...prev, ...updates }));
+    showToast('Preferencias de notificaciones guardadas');
+  };
+
+  const markAlertAsRead = (alertId: string) => {
+    setReadAlertIds((prev) => (prev.includes(alertId) ? prev : [...prev, alertId]));
+  };
+
+  const markAllAlertsAsRead = () => {
+    const allIds = alerts.map((a) => a.id);
+    setReadAlertIds(allIds);
+    showToast('Todas las alertas marcadas como leídas');
+  };
+
+  const requestNotificationPermission = async (): Promise<boolean> => {
+    const res = await requestWebNotificationPermission();
+    setNotificationSettings((prev) => ({ ...prev, permissionStatus: res }));
+    if (res === 'granted') {
+      showToast('¡Notificaciones Web y Push activadas con éxito!', 'success');
+      if (notificationSettings.soundEnabled) playNotificationChime();
+      sendBrowserNotification('🚗 MiGarage — Notificaciones Activadas', {
+        body: 'Te avisaremos a tiempo antes del vencimiento de tus seguros, VTV y services.',
+      });
+      return true;
+    } else if (res === 'denied') {
+      showToast('Permiso de notificaciones bloqueado en el navegador', 'warning');
+      return false;
+    } else {
+      showToast('Notificaciones no soportadas en este entorno', 'info');
+      return false;
+    }
+  };
+
+  const sendTestNotification = () => {
+    if (notificationSettings.soundEnabled) {
+      playNotificationChime();
+    }
+    const sent = sendBrowserNotification('🔔 MiGarage — Prueba de Alerta', {
+      body: '🚗 Toyota Etios: VTV próxima a vencer en 12 días. Tu sistema de alertas está 100% operativo.',
+    });
+    if (sent) {
+      showToast('Notificación web enviada a tu dispositivo');
+    } else {
+      showToast('Alerta de prueba emitida (en pantalla). Activá notificaciones en el navegador para ver banners de escritorio.', 'info');
+    }
+  };
+
+  const checkUpcomingExpirationsNow = (notifyUser = true) => {
+    const urgentAlerts = alerts.filter((a) => a.urgency === 'critico' || a.urgency === 'urgente');
+    if (notificationSettings.soundEnabled && urgentAlerts.length > 0) {
+      playNotificationChime();
+    }
+
+    if (urgentAlerts.length > 0) {
+      const topAlert = urgentAlerts[0];
+      sendBrowserNotification(`⚠️ Alerta MiGarage: ${topAlert.title}`, {
+        body: `${topAlert.vehicleName}: ${topAlert.detail}`,
+      });
+      if (notifyUser) {
+        showToast(`Se detectaron ${urgentAlerts.length} vencimientos prioritarios (Seguro / VTV / Service)`, 'warning');
+      }
+    } else if (notifyUser) {
+      showToast('Todos los seguros, VTV y services se encuentran al día', 'success');
+    }
+  };
+
+  // Run initial check on app load after a brief delay
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      // Background check without interrupting user
+      checkUpcomingExpirationsNow(false);
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, []);
 
   // Persist to local storage
   useEffect(() => {
@@ -546,6 +691,17 @@ export const GarageProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         addDriver,
         updateDriver,
         deleteDriver,
+
+        // Notifications & Expirations
+        alerts,
+        unreadAlertsCount,
+        notificationSettings,
+        updateNotificationSettings,
+        markAlertAsRead,
+        markAllAlertsAsRead,
+        requestNotificationPermission,
+        sendTestNotification,
+        checkUpcomingExpirationsNow,
 
         resetToDemoData,
         showToast,
